@@ -81,6 +81,8 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = Field(description="日志级别", default="INFO")
     LOG_BACKUP_COUNT: int = Field(description="日志保留天数", default=7)
 
+    ENABLE_SCHEDULER: bool = Field(description="是否启用任务调度",default=True)
+
     model_config = SettingsConfigDict(
         env_file_encoding="utf-8",
         case_sensitive=True,

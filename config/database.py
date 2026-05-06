@@ -6,80 +6,90 @@
 @Author: Mr Shu
 @Contact: huanhuanshu48@gmail.com
 @File: database.py
-@Create: 2026/4/18 00:08
-@Desc: 数据库连接配置
+@Create: 2026/4/20 21:27
+@Desc: 数据库依赖
 """
+import logging
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator
+from typing import AsyncGenerator, AsyncIterator, Annotated
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
 
 from config.config import settings
 
+logger = logging.getLogger(__name__)
 
-class Base(DeclarativeBase):
-    """
-    SQLAlchemy 声明式模型基类。
-
-    说明：
-        所有 ORM 模型都应继承该基类，
-        以便统一纳入 SQLAlchemy 的元数据管理。
-    """
-
-    pass
-
-
-# 创建异步数据库引擎，供全局会话工厂复用
 engine = create_async_engine(
-    settings.database_url,
+    settings.DATABASE_URL,
     echo=settings.DEBUG,
-    future=True,
 )
 
-# 创建异步会话工厂，用于按需生成数据库会话
-AsyncSessionLocal = async_sessionmaker(
+
+# 创建异步会话工厂
+AsyncSessionLocal = sessionmaker(
     bind=engine,
     class_=AsyncSession,
     expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
+    autoflush=False, # 是否自动刷新
+    autocommit=False, # 是否自动提交
 )
 
+# 声明基类
+Base = declarative_base()
 
-async def get_db() -> AsyncGenerator[AsyncSession, Any]:
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
-    获取数据库会话。
-
-    说明：
-        该函数通常作为 FastAPI 的依赖项使用，
-        每次请求按需创建一个异步会话，并在请求结束后自动释放。
-
-    Yields:
-        AsyncSession: 当前请求可用的数据库会话对象。
+    获取数据库会话（不自动提交事务）。
+    Returns:
+        AsyncGenerator[AsyncSession, None]: FastAPI 依赖注入可消费的异步会话生成器。
     """
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+        except Exception:
+            logger.exception("Database session error in get_db.")
+            raise
+        finally:
+            await session.close()
+
+
+async def get_db_transaction() -> AsyncGenerator[AsyncSession, None]:
+    """
+    获取数据库会话（自动事务提交/回滚）。
+    Returns:
+        AsyncGenerator[AsyncSession, None]: 带自动事务控制的异步会话生成器。
+    """
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            logger.exception("Database transaction error in get_db_transaction.")
+            await session.rollback()  # 回滚事务
+            raise
+        finally:
+            await session.close()
 
 
 @asynccontextmanager
-async def transaction(db: AsyncSession):
+async def transaction(db: AsyncSession) -> AsyncIterator[AsyncSession]:
     """
-    数据库事务上下文管理器。
-
-    说明：
-        该上下文管理器用于将多个数据库操作包裹在同一事务中。
-        当代码块执行成功时自动提交事务，发生异常时自动回滚。
-
+    为已有会话提供事务上下文。
     Args:
-        db: 当前使用的异步数据库会话。
-
-    Yields:
-        AsyncSession: 当前事务内可复用的数据库会话对象。
+        db: 已创建的异步数据库会话。
+    Returns:
+        AsyncIterator[AsyncSession]: 可在 `async with` 中使用的事务上下文。
     """
     try:
         yield db
         await db.commit()
     except Exception:
+        logger.exception("Database transaction context error.")
         await db.rollback()
         raise
+
+
+DbSession = Annotated[AsyncSession, Depends(get_db)]

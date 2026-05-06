@@ -17,6 +17,18 @@ from starlette.responses import JSONResponse
 
 T = TypeVar("T")
 
+def to_camel(field_name: str) -> str:
+    """
+    将下划线命名的字段名转换为小驼峰命名。
+    Args:
+        field_name: 原始字段名。
+    Returns:
+        str: 转换后的小驼峰字段名。
+    """
+    parts = field_name.split("_")
+    return parts[0] + "".join(part.capitalize() for part in parts[1:])
+
+
 
 class ErrorCode(int, Enum):
     """
@@ -38,8 +50,33 @@ class ErrorCode(int, Enum):
     TOO_MANY_REQUESTS = 429
     GATEWAY_TIMEOUT = 502
 
+class CamelBaseModel(BaseModel):
+    """
+    统一支持驼峰与下划线字段名的基础模型。
+    Args:
+        无。
+    Returns:
+        无。
+    """
 
-class Response(BaseModel, Generic[T]):
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=to_camel,
+    )
+
+class ApiInSchema(CamelBaseModel):
+    """API 输入基类: 同时兼容 snake_case 和 camelCase。"""
+
+
+
+class ApiOutSchema(CamelBaseModel):
+    """API 输出基类: 统一输出 camelCase，并支持从 ORM 对象构建。"""
+
+    model_config = ConfigDict(
+        from_attributes=True,
+    )
+
+class Response(ApiOutSchema, Generic[T]):
     """
     通用响应模型。
 
@@ -48,16 +85,16 @@ class Response(BaseModel, Generic[T]):
         其中 `data` 支持泛型，方便不同接口复用同一套返回包装格式。
     """
 
-    code: int = Field(default=ErrorCode.SUCCESS, description="Response code")
-    data: T | None = Field(default=None, description="Response data")
-    msg: str = Field(default="Operation successful", description="Response message")
+    code: int = Field(default=ErrorCode.SUCCESS, description="响应编码")
+    data: T | None = Field(default=None, description="响应数据")
+    msg: str = Field(default="操作成功", description="响应消息")
 
     @classmethod
     def success(
             cls,
             code: int = ErrorCode.SUCCESS,
             data: T | None = None,
-            msg: str = "Operation successful",
+            msg: str = "操作成功",
     ) -> "Response[T]":
         """
         创建成功响应。
@@ -81,7 +118,7 @@ class Response(BaseModel, Generic[T]):
             cls,
             code: int = ErrorCode.SUCCESS,
             data: T | None = None,
-            msg: str = "Operation failure",
+            msg: str = "操作失败",
     ) -> "Response[T]":
         """
         创建失败响应。
@@ -101,12 +138,21 @@ class Response(BaseModel, Generic[T]):
         )
 
     def to_http_response(self, status_code: int = 200) -> JSONResponse:
-        return JSONResponse(status_code=status_code, content=self.model_dump())
+        """
+        将响应模型转换为 HTTP 响应对象。
+        Args:
+            status_code: HTTP 状态码，默认返回 200。
+        Returns:
+            JSONResponse: 使用字段别名序列化后的 JSON 响应对象。
+        """
+        return JSONResponse(
+            status_code=status_code,
+            content=self.model_dump(by_alias=True),
+        )
 
 
 
-
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse(ApiOutSchema, Generic[T]):
     """
     分页响应模型。
 
@@ -115,12 +161,12 @@ class PaginatedResponse(BaseModel, Generic[T]):
         包含当前页数据列表、总记录数以及是否存在下一页等信息。
     """
 
-    items: list[T] = Field(default_factory=list, description="Data items")
-    total: int = Field(default=0, description="Total count")
-    has_next: bool = Field(default=False, description="Has next page")
+    items: list[T] = Field(default_factory=list, description="数据项")
+    total: int = Field(default=0, description="返回数据总数")
+    has_next: bool = Field(default=False, description="是否还有下一页")
 
 
-class PaginatedRequest(BaseModel):
+class PaginatedRequest(ApiInSchema):
     """
     分页请求模型。
 
@@ -129,19 +175,18 @@ class PaginatedRequest(BaseModel):
         通过 `page_size` 和 `page_index` 约束分页请求的大小和页码范围。
     """
 
-    # 允许同时接收字段原名和 alias，例如 page_size 与 pageSize
-    model_config = ConfigDict(populate_by_name=True)
-
     page_size: int = Field(
         default=20,
         ge=1,
         le=200,
         alias="pageSize",
-        description="Page size",
+        description="分页大小",
     )
     page_index: int = Field(
         default=1,
         ge=1,
         alias="pageIndex",
-        description="Page index",
+        description="第几页",
     )
+
+

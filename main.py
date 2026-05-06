@@ -20,22 +20,28 @@ from config.log.config import setup_logging
 from core.router import router as core_router
 from demo.router import router as demo_router
 from middleware.log_middleware import RequestLogMiddleware
+from scheduler.router import router as scheduler_router
+from utils.redis_client import RedisClient
+from apscheduler import AsyncScheduler
+from scheduler.service import scheduler_service as service
 
-
-setup_logging()
 logger = logging.getLogger("app")
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(app: FastAPI):
     """
     应用生命周期管理。
-
-    说明：
-        使用 FastAPI 推荐的 lifespan 方案替代过时的 `@app.on_event`。
+    说明:
+        在应用启动阶段初始化日志系统，并按配置启动 APScheduler；
+        在应用关闭阶段统一释放调度器与 Redis 等资源。
     """
+    setup_logging()
+    app.state.logger = logger
+    app.state.scheduler = None
+
     logger.info(
-        "application started",
+        "application starting",
         extra={
             "service": settings.APP_NAME,
             "env": settings.ENV,
@@ -43,11 +49,34 @@ async def lifespan(_: FastAPI):
             "port": settings.APP_PORT,
         },
     )
-    yield
-    logger.info("application stopped")
+
+    scheduler = None
+    scheduler_service = service
+    try:
+        if getattr(settings, "ENABLE_SCHEDULER", True):
+            scheduler = AsyncScheduler()
+            await scheduler.__aenter__()
+            await scheduler.start_in_background()
+            scheduler_service.set_scheduler(scheduler)
+            await scheduler_service.load_jobs_from_db()
+            app.state.scheduler = scheduler
+            logger.info("scheduler started")
+
+        logger.info("application started")
+        yield
+    finally:
+        if scheduler_service is not None:
+            scheduler_service.set_running(False)
+
+        if scheduler is not None:
+            await scheduler.__aexit__(None, None, None)
+            logger.info("scheduler stopped")
+
+        await RedisClient.close()
+        logger.info("application stopped")
+        logging.shutdown()
 
 
-# 创建 FastAPI 应用实例，并注入基础项目信息
 app = FastAPI(
     title=settings.APP_NAME,
     description="一个简单的 FastAPI CRUD 示例",
@@ -59,17 +88,16 @@ app = FastAPI(
     },
 )
 
-# 注册请求日志中间件和业务路由
 app.add_middleware(RequestLogMiddleware)
 app.include_router(core_router, prefix="/api/core")
 app.include_router(demo_router, prefix="/demo")
+app.include_router(scheduler_router, prefix="/api")
 
 
 @app.get("/", tags=["根路由"])
 async def root() -> Response:
     """
     获取应用基础信息。
-
     Returns:
         Response: 包含应用名称、版本和描述信息的统一响应对象。
     """
