@@ -9,6 +9,7 @@
 @Create: 2026/4/17 22:06
 @Desc: 演示模块总路由
 """
+
 from fastapi import APIRouter
 
 from demo.custom.api import router as custom_router

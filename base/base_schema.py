@@ -9,6 +9,7 @@
 @Create: 2026/4/17 21:44
 @Desc: 基础响应模型
 """
+
 from enum import Enum
 from typing import Generic, TypeVar
 
@@ -188,5 +189,4 @@ class PaginatedRequest(ApiInSchema):
         alias="pageIndex",
         description="第几页",
     )
-
 

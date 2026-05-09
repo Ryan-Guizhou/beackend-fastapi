@@ -9,20 +9,18 @@
 @Create: 2026/5/7 23:10
 @Desc: 字典项接口定义
 """
+
 import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query
 
-from base.base_schema import PaginatedResponse, Response
+from base.base_schema import Response
 from config.database import DbSession
-from core.dict.service import DictService
-from core.dict_item.model import DictItem
 from core.dict_item.schema import (
     DictItemBatchDelete,
     DictItemBatchUpdateStatus,
     DictItemCreate,
-    DictItemInfo,
     DictItemPageRequest,
     DictItemUpdate,
 )
@@ -46,16 +44,11 @@ async def create_dict_item(
     Returns:
         Response: 创建结果。
     """
-    dict_obj = await DictService.get_by_code(db, data.dict_code)
-    if not dict_obj:
-        return Response.failure(msg="所属字典不存在")
-
-    is_unique = await DictItemService.check_unique_value(db, data.dict_code, data.value)
-    if not is_unique:
-        return Response.failure(msg=f"字典项值 {data.value} 已存在")
-
-    dict_item = await DictItemService.create(db, data)
-    return Response.success(data=DictItemInfo.model_validate(dict_item))
+    try:
+        dict_item = await DictItemService.create_dict_item(db, data)
+    except ValueError as exc:
+        return Response.failure(msg=str(exc))
+    return Response.success(data=dict_item)
 
 
 @router.get("/list/by_dict/{dict_code}", response_model=Response, summary="获取字典下全部启用字典项")
@@ -67,12 +60,12 @@ async def get_active_dict_items_by_dict_code(
     获取指定字典下全部启用字典项。
     Args:
         db: 数据库会话。
-        dict_code: 字典 ID。
+        dict_code: 字典编码。
     Returns:
         Response: 字典项列表。
     """
-    items = await DictItemService.get_all_active_by_dict_code(db, dict_code)
-    return Response.success(data=[DictItemInfo.model_validate(item) for item in items])
+    items = await DictItemService.get_active_infos_by_dict_code(db, dict_code)
+    return Response.success(data=items)
 
 
 @router.get("/page_list", response_model=Response, summary="分页获取字典项列表")
@@ -88,29 +81,7 @@ async def get_dict_item_list(
     Returns:
         Response: 分页结果。
     """
-    filters = []
-    if data.dict_code:
-        filters.append(DictItem.dict_code == data.dict_code)
-    if data.label:
-        filters.append(DictItem.label.like(f"%{data.label}%"))
-    if data.value:
-        filters.append(DictItem.value.like(f"%{data.value}%"))
-    if data.status is not None:
-        filters.append(DictItem.status == data.status)
-
-    items, total = await DictItemService.page_list(
-        db,
-        page=data.page_index,
-        page_size=data.page_size,
-        filters=filters,
-    )
-    return Response.success(
-        data=PaginatedResponse(
-            items=[DictItemInfo.model_validate(item) for item in items],
-            total=total,
-            has_next=data.page_index * data.page_size < total,
-        )
-    )
+    return Response.success(data=await DictItemService.page_dict_item_infos(db, data))
 
 
 @router.post("/batch/delete", response_model=Response, summary="批量删除字典项")
@@ -126,13 +97,7 @@ async def batch_delete_dict_item(
     Returns:
         Response: 删除结果。
     """
-    success_count, fail_count = await DictItemService.batch_delete(db, data.ids)
-    return Response.success(
-        data={
-            "successCount": success_count,
-            "failCount": fail_count,
-        }
-    )
+    return Response.success(data=await DictItemService.batch_delete_dict_item(db, data.ids))
 
 
 @router.post("/batch/update_status", response_model=Response, summary="批量更新字典项状态")
@@ -163,7 +128,7 @@ async def check_dict_item_unique(
     检查字典项值是否唯一。
     Args:
         db: 数据库会话。
-        dict_code: 字典 ID。
+        dict_code: 字典编码。
         value: 字典项值。
         exclude_id: 更新场景下需要排除的字典项 ID。
     Returns:
@@ -171,7 +136,7 @@ async def check_dict_item_unique(
     """
     is_unique = await DictItemService.check_unique_value(
         db,
-        dict_id=dict_code,
+        dict_code=dict_code,
         value=value,
         exclude_id=exclude_id,
     )
@@ -193,10 +158,10 @@ async def get_dict_item_by_id(
     Returns:
         Response: 查询结果。
     """
-    dict_item = await DictItemService.get_by_id(db, item_id)
+    dict_item = await DictItemService.get_info_by_id(db, item_id)
     if not dict_item:
         return Response.failure(msg="字典项不存在")
-    return Response.success(data=DictItemInfo.model_validate(dict_item))
+    return Response.success(data=dict_item)
 
 
 @router.put("/{item_id}", response_model=Response, summary="修改字典项")
@@ -214,25 +179,11 @@ async def update_dict_item(
     Returns:
         Response: 更新结果。
     """
-    dict_item = await DictItemService.get_by_id(db, item_id)
-    if not dict_item:
-        return Response.failure(msg="字典项不存在")
-
-    dict_obj = await DictService.get_by_code(db, data.dict_code)
-    if not dict_obj:
-        return Response.failure(msg="所属字典不存在")
-
-    is_unique = await DictItemService.check_unique_value(
-        db,
-        dict_code=data.dict_code,
-        value=data.value,
-        exclude_id=item_id,
-    )
-    if not is_unique:
-        return Response.failure(msg=f"字典项值 {data.value} 已存在")
-
-    updated_dict_item = await DictItemService.update(db, item_id, data)
-    return Response.success(data=DictItemInfo.model_validate(updated_dict_item))
+    try:
+        updated_dict_item = await DictItemService.update_dict_item(db, item_id, data)
+    except ValueError as exc:
+        return Response.failure(msg=str(exc))
+    return Response.success(data=updated_dict_item)
 
 
 @router.delete("/{item_id}", response_model=Response, summary="删除字典项")
@@ -248,7 +199,7 @@ async def delete_dict_item(
     Returns:
         Response: 删除结果。
     """
-    deleted = await DictItemService.del_by_id(db, item_id)
+    deleted = await DictItemService.delete_dict_item(db, item_id)
     if not deleted:
         return Response.failure(msg="字典项不存在")
     return Response.success(msg="删除成功")

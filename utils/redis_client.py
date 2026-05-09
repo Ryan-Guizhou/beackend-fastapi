@@ -9,6 +9,7 @@
 @Create: 2026/4/18 14:39
 @Desc: 文件描述
 """
+
 import json
 from typing import Any
 
@@ -33,7 +34,7 @@ class RedisClient:
 
         if cls._client is None:
             cls._client = await aioredis.from_url(
-                settings.REDIS_URL,
+                settings.redis.url,
                 encoding="utf-8",
                 encode_response=True,
             )
@@ -48,7 +49,7 @@ class RedisClient:
 class CacheManager:
 
     def __init__(self,prefix:str = "") -> None:
-        self.prefix = f"{settings.CACHE_PREFIX}{prefix}"
+        self.prefix = f"{settings.cache.prefix}{prefix}"
 
     def _build_key(self,key: str) -> str:
         return f"{self.prefix}{key}"
@@ -66,7 +67,7 @@ class CacheManager:
 
     async def set(self,key: str,value: Any,expire: int | None = None) -> None:
         client = await RedisClient.get_client()
-        expire = expire or settings.CACHE_EXPIRE
+        expire = expire or settings.cache.default_expire
         if isinstance(value,(dict,list)):
             value = json.dumps(value,ensure_ascii=False,default=str)
         elif not isinstance(value,str):

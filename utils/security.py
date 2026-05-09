@@ -33,7 +33,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
         expire = datetime.now(timezone.utc) + expires_delta
     else:
         expire = datetime.now(timezone.utc) + timedelta(
-            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+            minutes=settings.jwt.access_token_expire_minutes
         )
 
     # 补充过期时间和 Token 类型后统一编码
@@ -44,8 +44,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 
     encoded_jwt = jwt.encode(
         to_encode,
-        settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM,
+        settings.jwt.secret_key,
+        algorithm=settings.jwt.algorithm,
     )
     return encoded_jwt
 
@@ -66,7 +66,7 @@ def create_refresh_token(data: dict, expires_delta: timedelta | None = None) -> 
         expire = datetime.now(timezone.utc) + expires_delta
     else:
         expire = datetime.now(timezone.utc) + timedelta(
-            days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+            days=settings.jwt.refresh_token_expire_days
         )
 
     to_encode.update({
@@ -76,8 +76,8 @@ def create_refresh_token(data: dict, expires_delta: timedelta | None = None) -> 
 
     encoded_jwt = jwt.encode(
         to_encode,
-        settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM,
+        settings.jwt.secret_key,
+        algorithm=settings.jwt.algorithm,
     )
     return encoded_jwt
 
@@ -95,8 +95,8 @@ def decode_token(token: str) -> dict | None:
     try:
         payload = jwt.decode(
             token,
-            settings.JWT_SECRET_KEY,
-            algorithms=[settings.JWT_ALGORITHM],
+            settings.jwt.secret_key,
+            algorithms=[settings.jwt.algorithm],
         )
         return payload
     except JWTError:

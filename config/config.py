@@ -12,10 +12,10 @@
 
 import os
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import Field, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import json5
+from pydantic import BaseModel, Field, model_validator
 
 from utils.file import get_base_dir
 
@@ -24,108 +24,221 @@ BASE_DIR = get_base_dir()
 ENV_DIR = BASE_DIR / "env"
 
 
-class Settings(BaseSettings):
+class AppConfig(BaseModel):
     """
-    项目配置模型。
-
-    说明：
-        该模型统一管理应用运行所需的环境变量和默认配置，
-        包括基础应用信息、数据库配置、Redis 配置以及 JWT 配置。
+    应用基础配置。
+    Args:
+        无。
+    Returns:
+        无。
     """
 
-    ENV: Literal["dev", "uat", "prod"] = "dev"
-    DEBUG: bool = Field(description="是否启用调试模式", default=True)
+    name: str = Field(default="backend-fastapi", description="项目名称")
+    host: str = Field(default="0.0.0.0", description="项目监听地址")
+    port: int = Field(default=8000, description="项目端口号")
+    version: str = Field(default="V1.0.0", description="项目版本")
+    description: str = Field(default="backend-fastapi", description="项目描述")
 
-    APP_NAME: str = Field(description="项目名称", default="backend-fastapi")
-    APP_HOST: str = Field(description="项目监听地址", default="0.0.0.0")
-    APP_PORT: int = Field(description="项目端口号", default=8000)
-    APP_VERSION: str = Field(description="项目版本", default="V1.0.0")
-    APP_DESCRIPTION: str = Field(description="项目描述", default="backend-fastapi")
 
-    # 数据库相关配置
-    DB_HOST: str = Field(description="数据库主机地址", default="127.0.0.1")
-    DB_PORT: int = Field(description="数据库端口", default=3306)
-    DB_USER: str = Field(description="数据库用户名", default="root")
-    DB_PASSWORD: str = Field(description="数据库密码", default="123456")
-    DB_NAME: str = Field(description="数据库名称", default="backend-fastapi")
-    DATABASE_URL: str | None = None
+class DatabaseConfig(BaseModel):
+    """
+    数据库配置。
+    Args:
+        无。
+    Returns:
+        无。
+    """
 
-    # Redis 相关配置
-    REDIS_HOST: str = Field(description="Redis 主机地址", default="127.0.0.1")
-    REDIS_PORT: int = Field(description="Redis 端口", default=6379)
-    REDIS_PASSWORD: str = Field(description="Redis 密码", default="123456")
-    REDIS_DB: int = Field(description="Redis 数据库编号", default=0)
-    REDIS_URL: str | None = None
-
-    # 缓存配置
-    CACHE_DEFAULT_EXPIRE: int = Field(description="默认缓存过期时间（秒）",default=300)
-    CACHE_PREFIX: str = Field(description="缓存key前缀",default="peach-fastapi:")
-
-    # JWT 配置
-    JWT_SECRET_KEY: str = Field(
-        description="JWT 密钥",
-        default="_Ajb6-A-9XLdFs5SJNa5QCsDMP4rdsRTCUHrO37IA4c",
-    )
-    JWT_ALGORITHM: str = Field(description="JWT 算法", default="HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
-        description="Access Token 过期时间，单位分钟",
-        default=30,
-    )
-    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
-        description="Refresh Token 过期时间，单位天",
-        default=7,
-    )
-
-    # 日志配置
-    LOG_DIR: str = Field(description="日志目录", default="logs")
-    LOG_LEVEL: str = Field(description="日志级别", default="INFO")
-    LOG_BACKUP_COUNT: int = Field(description="日志保留天数", default=7)
-
-    ENABLE_SCHEDULER: bool = Field(description="是否启用任务调度",default=True)
-
-    model_config = SettingsConfigDict(
-        env_file_encoding="utf-8",
-        case_sensitive=True,
-        extra="ignore",
-    )
+    host: str = Field(default="127.0.0.1", description="数据库主机地址")
+    port: int = Field(default=3306, description="数据库端口")
+    user: str = Field(default="root", description="数据库用户名")
+    password: str = Field(default="123456", description="数据库密码")
+    name: str = Field(default="backend-fastapi", description="数据库名称")
+    url: str | None = Field(default=None, description="数据库连接地址")
 
     @model_validator(mode="after")
-    def build_urls(self) -> "Settings":
+    def build_url(self) -> "DatabaseConfig":
         """
-        自动拼接数据库和 Redis 连接地址。
-
+        自动拼接数据库连接地址。
         Returns:
-            Settings: 已补全连接地址的配置对象。
+            DatabaseConfig: 补全连接地址后的数据库配置。
         """
-        if not self.DATABASE_URL:
-            self.DATABASE_URL = (
-                f"mysql+aiomysql://{self.DB_USER}:{self.DB_PASSWORD}"
-                f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+        if not self.url:
+            self.url = (
+                f"mysql+aiomysql://{self.user}:{self.password}"
+                f"@{self.host}:{self.port}/{self.name}"
             )
-        if not self.REDIS_URL:
-            if self.REDIS_PASSWORD:
-                self.REDIS_URL = (
-                    f"redis://:{self.REDIS_PASSWORD}@"
-                    f"{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+        return self
+
+
+class RedisConfig(BaseModel):
+    """
+    Redis 配置。
+    Args:
+        无。
+    Returns:
+        无。
+    """
+
+    host: str = Field(default="127.0.0.1", description="Redis 主机地址")
+    port: int = Field(default=6379, description="Redis 端口")
+    password: str = Field(default="", description="Redis 密码")
+    db: int = Field(default=0, description="Redis 数据库编号")
+    url: str | None = Field(default=None, description="Redis 连接地址")
+
+    @model_validator(mode="after")
+    def build_url(self) -> "RedisConfig":
+        """
+        自动拼接 Redis 连接地址。
+        Returns:
+            RedisConfig: 补全连接地址后的 Redis 配置。
+        """
+        if not self.url:
+            if self.password:
+                self.url = f"redis://:{self.password}@{self.host}:{self.port}/{self.db}"
+            else:
+                self.url = f"redis://{self.host}:{self.port}/{self.db}"
+        return self
+
+
+class MongoConfig(BaseModel):
+    """
+    MongoDB 配置。
+    Args:
+        无。
+    Returns:
+        无。
+    """
+
+    host: str = Field(default="127.0.0.1", description="MongoDB 主机地址")
+    port: int = Field(default=27017, description="MongoDB 端口")
+    user: str = Field(default="", description="MongoDB 用户名")
+    password: str = Field(default="", description="MongoDB 密码")
+    db: str = Field(default="backend-fastapi", description="MongoDB 数据库名称")
+    auth_source: str = Field(default="admin", description="MongoDB 认证数据库")
+    url: str | None = Field(default=None, description="MongoDB 连接地址")
+
+    @model_validator(mode="after")
+    def build_url(self) -> "MongoConfig":
+        """
+        自动拼接 MongoDB 连接地址。
+        Returns:
+            MongoConfig: 补全连接地址后的 MongoDB 配置。
+        """
+        if not self.url:
+            if self.user and self.password:
+                self.url = (
+                    f"mongodb://{self.user}:{self.password}"
+                    f"@{self.host}:{self.port}/{self.db}"
+                    f"?authSource={self.auth_source}"
                 )
             else:
-                self.REDIS_URL = (
-                    f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
-                )
+                self.url = f"mongodb://{self.host}:{self.port}/{self.db}"
         return self
+
+
+class CacheConfig(BaseModel):
+    """
+    缓存配置。
+    Args:
+        无。
+    Returns:
+        无。
+    """
+
+    default_expire: int = Field(default=300, description="默认缓存过期时间，单位秒")
+    prefix: str = Field(default="peach-fastapi:", description="缓存 Key 前缀")
+
+
+class JwtConfig(BaseModel):
+    """
+    JWT 配置。
+    Args:
+        无。
+    Returns:
+        无。
+    """
+
+    secret_key: str = Field(
+        default="_Ajb6-A-9XLdFs5SJNa5QCsDMP4rdsRTCUHrO37IA4c",
+        description="JWT 密钥",
+    )
+    algorithm: str = Field(default="HS256", description="JWT 算法")
+    access_token_expire_minutes: int = Field(default=30, description="Access Token 过期时间")
+    refresh_token_expire_days: int = Field(default=7, description="Refresh Token 过期时间")
+
+
+class LogConfig(BaseModel):
+    """
+    日志配置。
+    Args:
+        无。
+    Returns:
+        无。
+    """
+
+    dir: str = Field(default="logs", description="日志目录")
+    level: str = Field(default="INFO", description="日志级别")
+    backup_count: int = Field(default=7, description="日志保留天数")
+
+
+class SchedulerConfig(BaseModel):
+    """
+    调度配置。
+    Args:
+        无。
+    Returns:
+        无。
+    """
+
+    enabled: bool = Field(default=True, description="是否启用任务调度")
+
+
+class Settings(BaseModel):
+    """
+    项目配置模型。
+    Args:
+        无。
+    Returns:
+        无。
+    """
+
+    env: Literal["dev", "uat", "prod"] = "dev"
+    debug: bool = Field(default=True, description="是否启用调试模式")
+    app: AppConfig = Field(default_factory=AppConfig, description="应用配置")
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig, description="数据库配置")
+    redis: RedisConfig = Field(default_factory=RedisConfig, description="Redis 配置")
+    mongo: MongoConfig = Field(default_factory=MongoConfig, description="MongoDB 配置")
+    cache: CacheConfig = Field(default_factory=CacheConfig, description="缓存配置")
+    jwt: JwtConfig = Field(default_factory=JwtConfig, description="JWT 配置")
+    log: LogConfig = Field(default_factory=LogConfig, description="日志配置")
+    scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig, description="调度配置")
+
+def _load_json5_config(env: str) -> dict[str, Any]:
+    """
+    加载指定环境的 JSON5 配置文件。
+    Args:
+        env: 环境名称。
+    Returns:
+        dict[str, Any]: 配置字典。
+    Raises:
+        FileNotFoundError: 配置文件不存在时抛出。
+    """
+    config_file = ENV_DIR / f"{env}.json5"
+    with config_file.open("r", encoding="utf-8") as file:
+        return json5.load(file)
 
 
 @lru_cache
 def get_settings() -> Settings:
     """
     根据当前环境变量加载配置文件。
-
     Returns:
         Settings: 已完成解析和缓存的配置对象。
     """
     env = os.getenv("ENV", "dev")
-    env_file = ENV_DIR / f"{env}.env"
-    return Settings(_env_file=env_file, _env_encoding="utf-8")
+    config_data = _load_json5_config(env)
+    return Settings.model_validate(config_data)
 
 
 settings = get_settings()

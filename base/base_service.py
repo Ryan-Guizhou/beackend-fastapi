@@ -9,6 +9,7 @@
 @Create: 2026/4/18 0:48
 @Desc: 通用基础服务类
 """
+
 import logging
 from typing import Any, ClassVar, Generic, Iterable, Optional, Sequence, TypeVar
 

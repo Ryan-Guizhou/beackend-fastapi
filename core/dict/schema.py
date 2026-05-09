@@ -9,6 +9,7 @@
 @Create: 2026/5/7 22:23
 @Desc: 字典请求模型
 """
+
 from datetime import datetime
 from typing import List
 
@@ -96,6 +97,19 @@ class DictBatchUpdateStatus(ApiInSchema):
 
     ids: List[str] = Field(..., min_length=1, description="需要变更的字典ID")
     status: int = Field(..., ge=0, le=1, description="需要变更的字典状态")
+
+
+class DictBatchDeleteResult(ApiOutSchema):
+    """
+    字典批量删除响应模型。
+    Args:
+        无。
+    Returns:
+        无。
+    """
+
+    success_count: int = Field(description="删除成功数量")
+    fail_count: int = Field(description="删除失败数量")
 
 
 class DictInfo(ApiOutSchema):

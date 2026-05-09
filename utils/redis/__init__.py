@@ -5,7 +5,7 @@
 @Project: backend-fastapi
 @Author: Mr Shu
 @Contact: huanhuanshu48@gmail.com
-@File: __init__.py
-@Create: 2026/5/9
-@Desc: 工具包初始化
+@File: service.py
+@Create: 2026/5/7 23:10
+@Desc: 字典项业务服务
 """

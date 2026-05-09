@@ -9,6 +9,7 @@
 @Create: 2026/5/7 22:04
 @Desc: 字典项数据模型
 """
+
 from enum import IntEnum
 
 from sqlalchemy import Integer, String, Text

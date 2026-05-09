@@ -9,6 +9,7 @@
 @Create: 2026/4/18 15:06
 @Desc: Redis 管理服务
 """
+
 import logging
 from typing import Any
 
@@ -29,17 +30,17 @@ class AsyncRedisManagerService:
     """
 
     def __init__(self, db_index: int = 0):
-        redis_password = settings.REDIS_PASSWORD or None
+        redis_password = settings.redis.password or None
         self.client = aioredis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
+            host=settings.redis.host,
+            port=settings.redis.port,
             db=db_index,
             password=redis_password,
             decode_responses=False,
         )
         self.db_index = db_index
-        self.host = settings.REDIS_HOST
-        self.port = settings.REDIS_PORT
+        self.host = settings.redis.host
+        self.port = settings.redis.port
         self.password = redis_password
 
     async def get_all_database(self) -> tuple[list[dict[str, Any]], int]:

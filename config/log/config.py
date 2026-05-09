@@ -9,6 +9,7 @@
 @Create: 2026/4/17 23:59
 @Desc: 日志配置初始化
 """
+
 import logging.config
 from pathlib import Path
 
@@ -23,7 +24,7 @@ def setup_logging() -> None:
         该函数负责创建日志目录，并通过 `dictConfig` 注册控制台、
         应用日志、错误日志和访问日志等处理器。
     """
-    log_dir = Path(settings.LOG_DIR)
+    log_dir = Path(settings.log.dir)
     log_dir.mkdir(parents=True, exist_ok=True)
 
     config = {
@@ -54,17 +55,17 @@ def setup_logging() -> None:
         "handlers": {
             "console": {
                 "class": "logging.StreamHandler",
-                "level": settings.LOG_LEVEL,
+                "level": settings.log.level,
                 "formatter": "console",
                 "filters": ["request_context"],
             },
             "app_file": {
                 "class": "logging.handlers.TimedRotatingFileHandler",
-                "level": settings.LOG_LEVEL,
+                "level": settings.log.level,
                 "formatter": "json",
                 "filename": str(log_dir / "app.log"),
                 "when": "midnight",
-                "backupCount": settings.LOG_BACKUP_COUNT,
+                "backupCount": settings.log.backup_count,
                 "encoding": "utf-8",
                 "filters": ["request_context", "exclude_access"],
             },
@@ -74,7 +75,7 @@ def setup_logging() -> None:
                 "formatter": "json",
                 "filename": str(log_dir / "error.log"),
                 "when": "midnight",
-                "backupCount": settings.LOG_BACKUP_COUNT,
+                "backupCount": settings.log.backup_count,
                 "encoding": "utf-8",
                 "filters": ["request_context", "error_only", "exclude_access"],
             },
@@ -84,23 +85,23 @@ def setup_logging() -> None:
                 "formatter": "json",
                 "filename": str(log_dir / "access.log"),
                 "when": "midnight",
-                "backupCount": settings.LOG_BACKUP_COUNT,
+                "backupCount": settings.log.backup_count,
                 "encoding": "utf-8",
                 "filters": ["request_context", "access_only"],
             },
         },
         "root": {
-            "level": settings.LOG_LEVEL,
+            "level": settings.log.level,
             "handlers": ["console", "app_file", "error_file"],
         },
         "loggers": {
             "app": {
-                "level": settings.LOG_LEVEL,
+                "level": settings.log.level,
                 "handlers": ["console", "app_file", "error_file"],
                 "propagate": False,
             },
             "app.request": {
-                "level": settings.LOG_LEVEL,
+                "level": settings.log.level,
                 "handlers": ["console", "app_file", "error_file"],
                 "propagate": False,
             },
@@ -110,12 +111,12 @@ def setup_logging() -> None:
                 "propagate": False,
             },
             "uvicorn": {
-                "level": settings.LOG_LEVEL,
+                "level": settings.log.level,
                 "handlers": ["console", "app_file", "error_file"],
                 "propagate": False,
             },
             "uvicorn.error": {
-                "level": settings.LOG_LEVEL,
+                "level": settings.log.level,
                 "handlers": ["console", "app_file", "error_file"],
                 "propagate": False,
             },

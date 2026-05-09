@@ -1,0 +1,61 @@
+{
+  env: "prod",
+  debug: false,
+
+  app: {
+    name: "backend-fastapi",
+    host: "0.0.0.0",
+    port: 8890,
+    version: "V1.0.0",
+    description: "backend-fastapi production environment",
+  },
+
+  database: {
+    host: "127.0.0.1",
+    port: 3306,
+    user: "root",
+    password: "123456",
+    name: "backend-fastapi_prod",
+    url: "mysql+aiomysql://root:123456@127.0.0.1:3306/backend-fastapi_prod",
+  },
+
+  redis: {
+    host: "127.0.0.1",
+    port: 6379,
+    password: "123456",
+    db: 2,
+    // url: "redis://:123456@127.0.0.1:6379/2",
+  },
+
+  mongo: {
+    host: "127.0.0.1",
+    port: 27017,
+    user: "",
+    password: "",
+    db: "backend-fastapi_prod",
+    auth_source: "admin",
+    // url: "mongodb://127.0.0.1:27017/backend-fastapi_prod",
+  },
+
+  cache: {
+    default_expire: 300,
+    prefix: "peach-fastapi:",
+  },
+
+  jwt: {
+    secret_key: "_Ajb6-A-9XLdFs5SJNa5QCsDMP4rdsRTCUHrO37IA4c",
+    algorithm: "HS256",
+    access_token_expire_minutes: 30,
+    refresh_token_expire_days: 7,
+  },
+
+  log: {
+    dir: "logs",
+    level: "WARNING",
+    backup_count: 30,
+  },
+
+  scheduler: {
+    enabled: true,
+  },
+}

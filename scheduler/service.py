@@ -9,6 +9,7 @@
 @Create: 2026/5/5 14:04
 @Desc: 调度任务服务
 """
+
 import importlib
 import inspect
 import json
@@ -267,19 +268,32 @@ class SchedulerService:
 
     async def remove_job(self,job_code: str) -> bool:
 
-        """从调度器移除"""
+        """
+        从调度器移除任务。
+        Args:
+            job_code: 任务编码。
+        Returns:
+            bool: 移除成功返回 `True`，否则返回 `False`。
+        """
         if not self._scheduler:
             logger.error("scheduler is not initialized")
             return False
         try:
             await self._scheduler.remove_schedule(job_code)
-            logger.info(f"任务{job_code}已从调度器移除")
+            logger.info("scheduler job removed: %s", job_code)
             return True
-        except Exception as e:
-            logger.error(f"移除任务失败{job_code}:{str(e)}")
+        except Exception:
+            logger.exception("remove scheduler job failed: %s", job_code)
             return False
 
     async def run_job_now(self,job_code: str) -> bool:
+        """
+        立即执行调度任务。
+        Args:
+            job_code: 任务编码。
+        Returns:
+            bool: 执行成功返回 `True`，否则返回 `False`。
+        """
         if self._scheduler:
             return False
 
@@ -305,14 +319,19 @@ class SchedulerService:
                     task_func = _import_task_func(job_obj.task_func)
                     if task_func:
                         await self._execute_job(task_func,job_code,args,kwargs)
-                        logger.info(f"任务{job_code}已立即执行")
+                        logger.info("scheduler job executed immediately: %s", job_code)
                         return True
             return False
-        except Exception as e:
-            logger.exception(f"立即执行任务失败 {job_code}:{str(e)} ")
+        except Exception:
+            logger.exception("execute scheduler job immediately failed: %s", job_code)
             return False
 
     async def get_all_jobs(self) -> List[Dict[str,Any]]:
+        """
+        获取调度器中全部任务。
+        Returns:
+            list[dict[str, Any]]: 调度任务列表。
+        """
         if not self._scheduler:
             return []
         try:
@@ -323,8 +342,8 @@ class SchedulerService:
                 'trigger': str(scheduler.trigger)
             } for scheduler in schedulers
             ]
-        except Exception as e:
-            logger.error(f"获取所有任务失败:{str(e)}")
+        except Exception:
+            logger.exception("get all scheduler jobs failed")
             return []
 
     def _create_job_wrapper(

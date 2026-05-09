@@ -9,6 +9,7 @@
 @Create: 2026/5/5 14:04
 @Desc: 调度任务接口定义
 """
+
 import logging
 from datetime import datetime, timedelta
 from typing import Annotated, Any
@@ -251,10 +252,10 @@ async def batch_delete_scheduler_job(
                 success_count += 1
 
             else:
-                logger.info(f"任务{job_id}不存在或已被删除")
+                logger.info("scheduler job missing or deleted: %s", job_id)
                 failed_count.append(job_id)
-        except Exception as e:
-            logger.error(f"批量删除任务失败:{str(e)}")
+        except Exception:
+            logger.exception("batch delete scheduler job failed: %s", job_id)
             failed_count.append(job_id)
     await db.commit()
     return Response.success(

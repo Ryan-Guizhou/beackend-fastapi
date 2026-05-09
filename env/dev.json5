@@ -1,0 +1,61 @@
+{
+  env: "dev", // 启用环境
+  debug: true,
+
+  app: {
+    name: "backend-fastapi", // 项目名称
+    host: "0.0.0.0", // 绑定地址 ipv4
+    port: 8888, // 端口号
+    version: "V1.0.0", // 版本号
+    description: "backend-fastapi dev environment", // 项目描述
+  },
+
+  database: {
+    host: "127.0.0.1",
+    port: 3306,
+    user: "root",
+    password: "123456",
+    name: "backend-fastapi",
+    url: "mysql+aiomysql://root:123456@127.0.0.1:3306/backend-fastapi",
+  },
+
+  redis: {
+    host: "47.121.112.66",
+    port: 6379,
+    password: "123456",
+    db: 0,
+    // url: "redis://:123456@127.0.0.1:6379/0",
+  },
+
+  mongo: {
+    host: "47.121.112.66",
+    port: 27017,
+    user: "fastapi",
+    password: "123456",
+    db: "fastapi",
+    auth_source: "fastapi",
+    // url: "mongodb://127.0.0.1:27017/backend-fastapi",
+  },
+
+  cache: {
+    default_expire: 300,
+    prefix: "peach-fastapi:",
+  },
+
+  jwt: {
+    secret_key: "_Ajb6-A-9XLdFs5SJNa5QCsDMP4rdsRTCUHrO37IA4c",
+    algorithm: "HS256",
+    access_token_expire_minutes: 30,
+    refresh_token_expire_days: 7,
+  },
+
+  log: {
+    dir: "logs",
+    level: "DEBUG",
+    backup_count: 7,
+  },
+
+  scheduler: {
+    enabled: true,
+  },
+}
