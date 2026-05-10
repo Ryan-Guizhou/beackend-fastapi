@@ -1,7 +1,7 @@
 import axios, { AxiosError, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { message } from 'ant-design-vue'
-
-const TOKEN_KEY = import.meta.env.VITE_TOKEN_KEY || 'token'
+import { useAuthStore } from '@/store/auth'
+import { refreshToken as refreshTokenApi } from '@/api/auth-service'
 
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
@@ -11,30 +11,67 @@ const request = axios.create({
   },
 })
 
+let isRefreshing = false
+let requests: any[] = []
+
 request.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY)
-  if (token) {
-    config.headers.Authorization = token
+  const authStore = useAuthStore()
+  // Only add accessToken if Authorization header is not already set (e.g., by refreshToken call)
+  if (authStore.accessToken && !config.headers.Authorization) {
+    config.headers.Authorization = authStore.accessToken
   }
   return config
 })
 
 request.interceptors.response.use(
-  (response: AxiosResponse) => {
+  async (response: AxiosResponse) => {
     const code = String(response.data?.code ?? '')
     if (!code || code === '0' || code === '200') {
       return response
     }
 
+    const authStore = useAuthStore()
     const errorMessage = response.data?.message || response.data?.msg || '请求失败'
-    if (code === '401' || code === '40101') {
-      localStorage.removeItem(TOKEN_KEY)
-      message.error('登录已过期，请重新登录')
-      window.location.href = '/login'
-    } else {
-      message.error(errorMessage)
+
+    // Handle token expiration (402 indicates token expired)
+    if (code === '401' || code === '40101' || code === '402') {
+      const config = response.config
+
+      if (!isRefreshing) {
+        isRefreshing = true
+        try {
+          if (authStore.refreshToken) {
+            const res = await refreshTokenApi(authStore.refreshToken)
+            const newAccessToken = res.data?.data?.accessToken
+            if (newAccessToken) {
+              authStore.setAccessToken(newAccessToken)
+              config.headers.Authorization = newAccessToken
+              
+              // Resend pending requests
+              requests.forEach((cb) => cb(newAccessToken))
+              requests = []
+              return request(config)
+            }
+          }
+        } catch (error) {
+          authStore.clearAuth()
+          window.location.href = '/login'
+          return Promise.reject(error)
+        } finally {
+          isRefreshing = false
+        }
+      } else {
+        // Wait for token refresh
+        return new Promise((resolve) => {
+          requests.push((token: string) => {
+            config.headers.Authorization = token
+            resolve(request(config))
+          })
+        })
+      }
     }
 
+    message.error(errorMessage)
     return Promise.reject(new Error(errorMessage))
   },
   (error: AxiosError) => {
@@ -45,6 +82,13 @@ request.interceptors.response.use(
     }
 
     const status = error.response.status
+    const authStore = useAuthStore()
+
+    if (status === 401) {
+      authStore.clearAuth()
+      window.location.href = '/login'
+    }
+
     const errorMap: Record<number, string> = {
       400: '请求参数错误',
       401: '登录已过期，请重新登录',
@@ -56,10 +100,6 @@ request.interceptors.response.use(
     }
 
     const errorMessage = errorMap[status] || `请求失败 (${status})`
-    if (status === 401) {
-      localStorage.removeItem(TOKEN_KEY)
-      window.location.href = '/login'
-    }
     message.error(errorMessage)
     return Promise.reject(error)
   },

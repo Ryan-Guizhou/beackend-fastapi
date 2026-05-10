@@ -1,9 +1,12 @@
-﻿<script setup lang="ts">
-defineProps<{ compact?: boolean }>()
+<script setup lang="ts">
+defineProps<{ 
+  compact?: boolean
+  onlyIcon?: boolean
+}>()
 </script>
 
 <template>
-  <div :class="`brand${compact ? ' brand--compact' : ''}`">
+  <div :class="['brand', { 'brand--compact': compact, 'brand--only-icon': onlyIcon }]">
     <svg
       class="brand__icon"
       viewBox="0 0 48 48"
@@ -19,9 +22,19 @@ defineProps<{ compact?: boolean }>()
       <circle cx="24" cy="24" r="4.2" fill="#6DD3FF" />
       <circle cx="34" cy="32.5" r="4.2" fill="#FFD84D" />
     </svg>
-    <div class="brand__text">
+    <div v-if="!onlyIcon" class="brand__text">
       <strong>PeachCloud</strong>
       <span>数据管理平台</span>
     </div>
   </div>
 </template>
+
+<style scoped>
+.brand--only-icon {
+  gap: 0;
+}
+.brand--only-icon .brand__icon {
+  width: 100%;
+  height: 100%;
+}
+</style>
