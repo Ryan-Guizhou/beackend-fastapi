@@ -27,13 +27,44 @@ class DictItemUpdate(ApiInSchema):
         无。
     """
 
-    dict_code: str = Field(..., min_length=1,alias='dictCode', max_length=32, description="字典ID")
-    label: str = Field(..., min_length=1, max_length=100, description="显示名称")
-    value: str = Field(..., min_length=1, max_length=100, description="实际值")
-    icon: str | None = Field(default=None, max_length=100, description="图标")
-    status: int = Field(default=1, ge=0, le=1, description="字典项状态")
-    sort: int = Field(default=0, description="排序")
-    remark: str | None = Field(default=None, description="备注")
+    dict_code: str = Field(
+        ...,
+        min_length=1,
+        alias='dictCode',
+        max_length=32,
+        description="字典ID",
+    )
+    label: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="显示名称",
+    )
+    value: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="实际值",
+    )
+    icon: str | None = Field(
+        default=None,
+        max_length=100,
+        description="图标",
+    )
+    status: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="字典项状态",
+    )
+    sort: int = Field(
+        default=0,
+        description="排序",
+    )
+    remark: str | None = Field(
+        default=None,
+        description="备注",
+    )
 
 
 class DictItemCreate(DictItemUpdate):
@@ -55,10 +86,25 @@ class DictItemPageRequest(PaginatedRequest):
         无。
     """
 
-    dict_code: str | None = Field(default=None, alias="dictCode", description="字典编码")
-    label: str | None = Field(default=None, description="显示名称")
-    value: str | None = Field(default=None, description="实际值")
-    status: int | None = Field(default=None, ge=0, le=1, description="字典项状态")
+    dict_code: str | None = Field(
+        default=None,
+        alias="dictCode",
+        description="字典编码",
+    )
+    label: str | None = Field(
+        default=None,
+        description="显示名称",
+    )
+    value: str | None = Field(
+        default=None,
+        description="实际值",
+    )
+    status: int | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="字典项状态",
+    )
 
 
 class DictItemBatchDelete(ApiInSchema):
@@ -70,7 +116,11 @@ class DictItemBatchDelete(ApiInSchema):
         无。
     """
 
-    ids: List[str] = Field(..., min_length=1, description="需要删除的字典项ID")
+    ids: List[str] = Field(
+        ...,
+        min_length=1,
+        description="需要删除的字典项ID",
+    )
 
 
 class DictItemBatchUpdateStatus(ApiInSchema):
@@ -82,8 +132,17 @@ class DictItemBatchUpdateStatus(ApiInSchema):
         无。
     """
 
-    ids: List[str] = Field(..., min_length=1, description="需要变更的字典项ID")
-    status: int = Field(..., ge=0, le=1, description="需要变更的字典项状态")
+    ids: List[str] = Field(
+        ...,
+        min_length=1,
+        description="需要变更的字典项ID",
+    )
+    status: int = Field(
+        ...,
+        ge=0,
+        le=1,
+        description="需要变更的字典项状态",
+    )
 
 
 class DictItemBatchDeleteResult(ApiOutSchema):
@@ -95,8 +154,12 @@ class DictItemBatchDeleteResult(ApiOutSchema):
         无。
     """
 
-    success_count: int = Field(description="删除成功数量")
-    fail_count: int = Field(description="删除失败数量")
+    success_count: int = Field(
+        description="删除成功数量",
+    )
+    fail_count: int = Field(
+        description="删除失败数量",
+    )
 
 
 class DictItemInfo(ApiOutSchema):
@@ -108,19 +171,61 @@ class DictItemInfo(ApiOutSchema):
         无。
     """
 
-    id: str = Field(description="字典项ID")
-    dict_code: str = Field(description="字典ID")
-    label: str = Field(description="显示名称")
-    value: str = Field(description="实际值")
-    icon: str | None = Field(default=None, description="图标")
-    status: int = Field(description="字典项状态")
-    sort: int = Field(description="排序")
-    remark: str | None = Field(default=None, description="备注")
-    create_time: datetime = Field(description="创建时间")
-    modify_time: datetime = Field(description="修改时间")
+    id: str = Field(
+        description="字典项ID",
+    )
+    dict_code: str = Field(
+        description="字典ID",
+    )
+    label: str = Field(
+        description="显示名称",
+    )
+    value: str = Field(
+        description="实际值",
+    )
+    icon: str | None = Field(
+        default=None,
+        description="图标",
+    )
+    status: int = Field(
+        description="字典项状态",
+    )
+    sort: int = Field(
+        description="排序",
+    )
+    remark: str | None = Field(
+        default=None,
+        description="备注",
+    )
+    create_id: str | None = Field(
+        default=None,
+        alias="createId",
+        description="创建人ID",
+    )
+    modify_id: str | None = Field(
+        default=None,
+        alias="modifyId",
+        description="更新人ID",
+    )
+    creator: str | None = Field(
+        default=None,
+        description="创建人名称",
+    )
+    modifier: str | None = Field(
+        default=None,
+        description="更新人名称",
+    )
+    create_time: datetime | None = Field(
+        default=None,
+        description="创建时间",
+    )
+    modify_time: datetime | None = Field(
+        default=None,
+        description="修改时间",
+    )
 
     @field_serializer("create_time", "modify_time")
-    def serialize_datetime(self, value: datetime) -> str:
+    def serialize_datetime(self, value: datetime | None) -> str | None:
         """
         格式化时间字段。
         Args:
@@ -128,4 +233,4 @@ class DictItemInfo(ApiOutSchema):
         Returns:
             str: 格式化后的时间字符串。
         """
-        return value.strftime("%Y-%m-%d %H:%M:%S")
+        return value.strftime("%Y-%m-%d %H:%M:%S") if value else None

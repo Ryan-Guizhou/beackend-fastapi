@@ -10,11 +10,78 @@
 @Desc: JWT 解析工具
 """
 
+import base64
+import hashlib
+import hmac
+import os
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
+from passlib.context import CryptContext
 
 from config.config import settings
+
+password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def _base64_url_encode(data: bytes) -> str:
+    """
+    base64url 编码。
+    """
+    return base64.urlsafe_b64encode(data).decode("utf-8").rstrip("=")
+
+
+def _base64_url_decode(data: str) -> bytes:
+    """
+    base64url 解码。
+    """
+    padding_len = (-len(data)) % 4
+    return base64.urlsafe_b64decode((data + "=" * padding_len).encode("utf-8"))
+
+
+def hash_password(password: str, algorithm: str = "bcrypt") -> str:
+    """
+    对登录密码生成不可逆摘要。
+
+    Args:
+        password: 明文密码。
+        algorithm: 摘要算法，支持 `bcrypt` 和 `sha256_base64`。
+
+    Returns:
+        str: 密码摘要。
+    """
+    if algorithm == "bcrypt":
+        return password_context.hash(password)
+    if algorithm == "sha256_base64":
+        salt = os.urandom(16)
+        digest = hashlib.sha256(salt + password.encode("utf-8")).digest()
+        return f"sha256_base64${_base64_url_encode(salt)}${_base64_url_encode(digest)}"
+    raise ValueError(f"不支持的密码摘要算法: {algorithm}")
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    校验明文密码和不可逆摘要是否匹配。
+
+    Args:
+        plain_password: 解密后的明文密码。
+        hashed_password: 数据库存储的密码摘要。
+
+    Returns:
+        bool: 匹配返回 `True`，否则返回 `False`。
+    """
+    if not plain_password or not hashed_password:
+        return False
+    if hashed_password.startswith("sha256_base64$"):
+        try:
+            _, salt_text, digest_text = hashed_password.split("$", 2)
+            salt = _base64_url_decode(salt_text)
+            expected = _base64_url_decode(digest_text)
+        except ValueError:
+            return False
+        actual = hashlib.sha256(salt + plain_password.encode("utf-8")).digest()
+        return hmac.compare_digest(actual, expected)
+    return password_context.verify(plain_password, hashed_password)
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:

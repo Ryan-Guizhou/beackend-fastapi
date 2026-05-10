@@ -9,3 +9,6 @@ wheels/
 # Virtual environments
 .venv
 logs
+storage/security/*.json
+storage/security/**/*.pem
+storage/security/**/*.key

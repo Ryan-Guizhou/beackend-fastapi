@@ -27,11 +27,32 @@ class DictUpdate(ApiInSchema):
         无。
     """
 
-    name: str = Field(..., min_length=1, max_length=100, description="字典名称")
-    code: str = Field(..., min_length=1, max_length=100, description="字典编码")
-    status: int = Field(default=1, ge=0, le=1, description="字典状态")
-    sort: int = Field(default=0, description="排序")
-    remark: str | None = Field(default=None, description="备注")
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="字典名称",
+    )
+    code: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="字典编码",
+    )
+    status: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="字典状态",
+    )
+    sort: int = Field(
+        default=0,
+        description="排序",
+    )
+    remark: str | None = Field(
+        default=None,
+        description="备注",
+    )
 
     @field_validator("code")
     @classmethod
@@ -69,9 +90,20 @@ class DictPageRequest(PaginatedRequest):
         无。
     """
 
-    code: str | None = Field(default=None, description="字典编码")
-    name: str | None = Field(default=None, description="字典名称")
-    status: int | None = Field(default=None, ge=0, le=1, description="字典状态")
+    code: str | None = Field(
+        default=None,
+        description="字典编码",
+    )
+    name: str | None = Field(
+        default=None,
+        description="字典名称",
+    )
+    status: int | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="字典状态",
+    )
 
 
 class DictBatchDelete(ApiInSchema):
@@ -83,7 +115,11 @@ class DictBatchDelete(ApiInSchema):
         无。
     """
 
-    ids: List[str] = Field(..., min_length=1, description="需要删除的字典ID")
+    ids: List[str] = Field(
+        ...,
+        min_length=1,
+        description="需要删除的字典ID",
+    )
 
 
 class DictBatchUpdateStatus(ApiInSchema):
@@ -95,8 +131,17 @@ class DictBatchUpdateStatus(ApiInSchema):
         无。
     """
 
-    ids: List[str] = Field(..., min_length=1, description="需要变更的字典ID")
-    status: int = Field(..., ge=0, le=1, description="需要变更的字典状态")
+    ids: List[str] = Field(
+        ...,
+        min_length=1,
+        description="需要变更的字典ID",
+    )
+    status: int = Field(
+        ...,
+        ge=0,
+        le=1,
+        description="需要变更的字典状态",
+    )
 
 
 class DictBatchDeleteResult(ApiOutSchema):
@@ -108,8 +153,12 @@ class DictBatchDeleteResult(ApiOutSchema):
         无。
     """
 
-    success_count: int = Field(description="删除成功数量")
-    fail_count: int = Field(description="删除失败数量")
+    success_count: int = Field(
+        description="删除成功数量",
+    )
+    fail_count: int = Field(
+        description="删除失败数量",
+    )
 
 
 class DictInfo(ApiOutSchema):
@@ -121,17 +170,54 @@ class DictInfo(ApiOutSchema):
         无。
     """
 
-    id: str = Field(description="字典ID")
-    name: str = Field(description="字典名称")
-    code: str = Field(description="字典编码")
-    status: int = Field(description="字典状态")
-    sort: int = Field(description="排序")
-    remark: str | None = Field(default=None, description="备注")
-    create_time: datetime = Field(description="创建时间")
-    modify_time: datetime = Field(description="修改时间")
+    id: str = Field(
+        description="字典ID",
+    )
+    name: str = Field(
+        description="字典名称",
+    )
+    code: str = Field(
+        description="字典编码",
+    )
+    status: int = Field(
+        description="字典状态",
+    )
+    sort: int = Field(
+        description="排序",
+    )
+    remark: str | None = Field(
+        default=None,
+        description="备注",
+    )
+    create_id: str | None = Field(
+        default=None,
+        alias="createId",
+        description="创建人ID",
+    )
+    modify_id: str | None = Field(
+        default=None,
+        alias="modifyId",
+        description="更新人ID",
+    )
+    creator: str | None = Field(
+        default=None,
+        description="创建人名称",
+    )
+    modifier: str | None = Field(
+        default=None,
+        description="更新人名称",
+    )
+    create_time: datetime | None = Field(
+        default=None,
+        description="创建时间",
+    )
+    modify_time: datetime | None = Field(
+        default=None,
+        description="修改时间",
+    )
 
     @field_serializer("create_time", "modify_time")
-    def serialize_datetime(self, value: datetime) -> str:
+    def serialize_datetime(self, value: datetime | None) -> str | None:
         """
         格式化时间字段。
         Args:
@@ -139,4 +225,4 @@ class DictInfo(ApiOutSchema):
         Returns:
             str: 格式化后的时间字符串。
         """
-        return value.strftime("%Y-%m-%d %H:%M:%S")
+        return value.strftime("%Y-%m-%d %H:%M:%S") if value else None

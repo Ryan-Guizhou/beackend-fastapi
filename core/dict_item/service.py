@@ -14,6 +14,7 @@ from typing import List
 
 from sqlalchemy import select
 
+from base.audit import build_audit_info, build_audit_infos
 from base.base_schema import PaginatedResponse
 from base.base_service import BaseService
 from config.database import DbSession
@@ -61,7 +62,7 @@ class DictItemService(BaseService[DictItem, DictItemCreate, DictItemUpdate]):
             raise ValueError(f"字典项值 {data.value} 已存在")
 
         dict_item = await cls.create(db, data)
-        return DictItemInfo.model_validate(dict_item)
+        return await build_audit_info(db, dict_item, DictItemInfo)
 
     @classmethod
     async def get_by_dict_code(
@@ -103,7 +104,7 @@ class DictItemService(BaseService[DictItem, DictItemCreate, DictItemUpdate]):
         return [item.id for item in items]
 
     @classmethod
-    @cacheable(cache_name="dict_item", key="active:{dict_code}", ttl=3600, local_ttl=300, sync=True)
+    @cacheable(cache_name="dict_item", key="active:{dict_code}", ttl=60, local_ttl=30, sync=True)
     async def get_active_infos_by_dict_code(
         cls,
         db: DbSession,
@@ -125,7 +126,7 @@ class DictItemService(BaseService[DictItem, DictItemCreate, DictItemUpdate]):
             )
         )
         items = list(result.scalars().all())
-        return [DictItemInfo.model_validate(item) for item in items]
+        return await build_audit_infos(db, items, DictItemInfo)
 
     @classmethod
     async def page_dict_item_infos(
@@ -158,7 +159,7 @@ class DictItemService(BaseService[DictItem, DictItemCreate, DictItemUpdate]):
             filters=filters,
         )
         return PaginatedResponse(
-            items=[DictItemInfo.model_validate(item) for item in items],
+            items=await build_audit_infos(db, items, DictItemInfo),
             total=total,
             has_next=data.page_index * data.page_size < total,
         )
@@ -242,7 +243,7 @@ class DictItemService(BaseService[DictItem, DictItemCreate, DictItemUpdate]):
         )
 
     @classmethod
-    @cacheable(cache_name="dict_item", key="detail:{item_id}", ttl=1800, local_ttl=300)
+    @cacheable(cache_name="dict_item", key="detail:{item_id}", ttl=60, local_ttl=30)
     async def get_info_by_id(cls, db: DbSession, item_id: str) -> DictItemInfo | None:
         """
         根据字典项 ID 获取字典项详情。
@@ -253,9 +254,7 @@ class DictItemService(BaseService[DictItem, DictItemCreate, DictItemUpdate]):
             DictItemInfo | None: 字典项详情，未找到时返回 `None`。
         """
         dict_item = await cls.get_by_id(db, item_id)
-        if not dict_item:
-            return None
-        return DictItemInfo.model_validate(dict_item)
+        return await build_audit_info(db, dict_item, DictItemInfo)
 
     @classmethod
     @cache_evict(cache_name="dict_item", all_entries=True)
@@ -291,7 +290,7 @@ class DictItemService(BaseService[DictItem, DictItemCreate, DictItemUpdate]):
         updated_dict_item = await cls.update(db, item_id, data)
         if not updated_dict_item:
             raise ValueError("字典项不存在")
-        return DictItemInfo.model_validate(updated_dict_item)
+        return await build_audit_info(db, updated_dict_item, DictItemInfo)
 
     @classmethod
     @cache_evict(cache_name="dict_item", all_entries=True)

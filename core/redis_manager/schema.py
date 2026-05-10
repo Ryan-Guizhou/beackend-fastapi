@@ -41,7 +41,10 @@ class RedisKeySearchSchema(PaginatedRequest):
         用于接收 key 模式匹配、类型过滤和分页参数。
     """
 
-    pattern: str = Field(default="*", description="搜索模式，支持通配符")
+    pattern: str = Field(
+        default="*",
+        description="搜索模式，支持通配符",
+    )
     key_type: RedisKeyTypeEnum | None = Field(
         default=None,
         alias="keyType",
@@ -55,10 +58,23 @@ class RedisKeyCreateSchema(BaseModel):
     Redis 键创建请求模型。
     """
 
-    key: str = Field(..., description="键名")
-    key_type: RedisKeyTypeEnum = Field(..., alias="keyType", description="Redis 键类型")
-    value: Any = Field(..., description="键值")
-    ttl: int | None = Field(None, description="过期时间，单位秒，-1 表示永久")
+    key: str = Field(
+        ...,
+        description="键名",
+    )
+    key_type: RedisKeyTypeEnum = Field(
+        ...,
+        alias="keyType",
+        description="Redis 键类型",
+    )
+    value: Any = Field(
+        ...,
+        description="键值",
+    )
+    ttl: int | None = Field(
+        None,
+        description="过期时间，单位秒，-1 表示永久",
+    )
 
 
 class RedisBatchDeleteSchema(BaseModel):
@@ -66,7 +82,10 @@ class RedisBatchDeleteSchema(BaseModel):
     Redis 批量删除请求模型。
     """
 
-    keys: list[str] = Field(..., description="待删除的 Redis 键列表")
+    keys: list[str] = Field(
+        ...,
+        description="待删除的 Redis 键列表",
+    )
 
 
 class RedisKeyUpdateSchema(BaseModel):
@@ -74,8 +93,14 @@ class RedisKeyUpdateSchema(BaseModel):
     Redis 键更新请求模型。
     """
 
-    value: Any = Field(..., description="新的键值")
-    ttl: int | None = Field(None, description="新的过期时间，单位秒，-1 表示永久")
+    value: Any = Field(
+        ...,
+        description="新的键值",
+    )
+    ttl: int | None = Field(
+        None,
+        description="新的过期时间，单位秒，-1 表示永久",
+    )
 
 
 class RedisKeyRenameSchema(BaseModel):
@@ -83,7 +108,11 @@ class RedisKeyRenameSchema(BaseModel):
     Redis 键重命名请求模型。
     """
 
-    new_key: str = Field(..., alias="newKey", description="新的键名")
+    new_key: str = Field(
+        ...,
+        alias="newKey",
+        description="新的键名",
+    )
 
 
 class RedisKeyExpireSchema(BaseModel):
@@ -91,7 +120,10 @@ class RedisKeyExpireSchema(BaseModel):
     Redis 键过期时间设置请求模型。
     """
 
-    ttl: int = Field(..., description="过期时间，单位秒，-1 表示永久")
+    ttl: int = Field(
+        ...,
+        description="过期时间，单位秒，-1 表示永久",
+    )
 
 
 class RedisFlushDBSchema(BaseModel):

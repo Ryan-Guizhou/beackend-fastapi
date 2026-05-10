@@ -15,6 +15,7 @@ from typing import List, Optional
 
 from sqlalchemy import select
 
+from base.audit import build_audit_info, build_audit_infos
 from base.base_schema import PaginatedResponse
 from base.base_service import BaseService, T
 from config.database import DbSession
@@ -55,10 +56,10 @@ class DictService(BaseService[Dict, DictCreate, DictUpdate]):
         if not await cls.check_unique(db, field="code", value=data.code):
             raise ValueError(f"字典编码 {data.code} 已存在")
         dict_obj = await cls.create(db, data)
-        return DictInfo.model_validate(dict_obj)
+        return await build_audit_info(db, dict_obj, DictInfo)
 
     @classmethod
-    @cacheable(cache_name="dict", key="active", ttl=3600, local_ttl=300, sync=True)
+    @cacheable(cache_name="dict", key="active", ttl=60, local_ttl=30, sync=True)
     async def get_all_active_dict(cls, db: DbSession) -> list[DictInfo]:
         """
         获取全部启用状态的字典。
@@ -74,7 +75,7 @@ class DictService(BaseService[Dict, DictCreate, DictUpdate]):
             )
         )
         dicts = list(result.scalars().all())
-        return [DictInfo.model_validate(item) for item in dicts]
+        return await build_audit_infos(db, dicts, DictInfo)
 
     @classmethod
     async def page_dict_infos(
@@ -105,13 +106,13 @@ class DictService(BaseService[Dict, DictCreate, DictUpdate]):
             filters=filters,
         )
         return PaginatedResponse(
-            items=[DictInfo.model_validate(item) for item in items],
+            items=await build_audit_infos(db, items, DictInfo),
             total=total,
             has_next=data.page_index * data.page_size < total,
         )
 
     @classmethod
-    @cacheable(cache_name="dict", key="detail:{dict_id}", ttl=1800, local_ttl=300)
+    @cacheable(cache_name="dict", key="detail:{dict_id}", ttl=60, local_ttl=30)
     async def get_dict_info_by_id(cls, db: DbSession, dict_id: str) -> DictInfo | None:
         """
         根据字典 ID 获取字典详情。
@@ -122,9 +123,7 @@ class DictService(BaseService[Dict, DictCreate, DictUpdate]):
             DictInfo | None: 字典详情，未找到时返回 `None`。
         """
         dict_obj = await cls.get_by_id(db, dict_id)
-        if not dict_obj:
-            return None
-        return DictInfo.model_validate(dict_obj)
+        return await build_audit_info(db, dict_obj, DictInfo)
 
     @classmethod
     @caching(
@@ -160,7 +159,7 @@ class DictService(BaseService[Dict, DictCreate, DictUpdate]):
         updated_dict = await cls.update(db, dict_id, data)
         if not updated_dict:
             raise ValueError("字典不存在")
-        return DictInfo.model_validate(updated_dict)
+        return await build_audit_info(db, updated_dict, DictInfo)
 
     @classmethod
     @caching(
