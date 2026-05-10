@@ -65,42 +65,42 @@ class User(DBBaseModel):
         default=UserStatus.ENABLED.value,
         comment="用户状态",
     )
-    unlock_time: Mapped[datetime | None] = mapped_column(
-        DateTime,
-        nullable=True,
-        comment="解锁时间",
-    )
-    menu_style: Mapped[str | None] = mapped_column(
-        String(20),
-        nullable=True,
-        comment="菜单风格",
-    )
-    menu_role: Mapped[str | None] = mapped_column(
-        String(128),
-        nullable=True,
-        comment="默认菜单角色",
-    )
+    # unlock_time: Mapped[datetime | None] = mapped_column(
+    #     DateTime,
+    #     nullable=True,
+    #     comment="解锁时间",
+    # )
+    # menu_style: Mapped[str | None] = mapped_column(
+    #     String(20),
+    #     nullable=True,
+    #     comment="菜单风格",
+    # )
+    # menu_role: Mapped[str | None] = mapped_column(
+    #     String(128),
+    #     nullable=True,
+    #     comment="默认菜单角色",
+    # )
     lastest_login: Mapped[datetime | None] = mapped_column(
         DateTime,
         nullable=True,
         comment="最后登录时间",
     )
-    login_failed_count: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
-        default=0,
-        comment="登录失败次数",
-    )
-    start_date: Mapped[date | None] = mapped_column(
-        Date,
-        nullable=True,
-        comment="生效日期",
-    )
-    end_date: Mapped[date | None] = mapped_column(
-        Date,
-        nullable=True,
-        comment="失效日期",
-    )
+    # login_failed_count: Mapped[int] = mapped_column(
+    #     Integer,
+    #     nullable=False,
+    #     default=0,
+    #     comment="登录失败次数",
+    # )
+    # start_date: Mapped[date | None] = mapped_column(
+    #     Date,
+    #     nullable=True,
+    #     comment="生效日期",
+    # )
+    # end_date: Mapped[date | None] = mapped_column(
+    #     Date,
+    #     nullable=True,
+    #     comment="失效日期",
+    # )
     mobile_phone: Mapped[str | None] = mapped_column(
         String(20),
         nullable=True,
@@ -124,11 +124,11 @@ class User(DBBaseModel):
         nullable=True,
         comment="密码修改时间",
     )
-    lock_reason: Mapped[str | None] = mapped_column(
-        String(128),
-        nullable=True,
-        comment="锁定原因",
-    )
+    # lock_reason: Mapped[str | None] = mapped_column(
+    #     String(128),
+    #     nullable=True,
+    #     comment="锁定原因",
+    # )
 
     def is_active(self) -> bool:
         return self.status == UserStatus.ENABLED.value
@@ -138,7 +138,5 @@ class User(DBBaseModel):
         if not self.is_active():
             return False
         if self.invalidate and self.invalidate <= now:
-            return False
-        if self.unlock_time and self.unlock_time > now:
             return False
         return True

@@ -10,16 +10,63 @@
 @Desc: 用户业务服务层
 """
 
+from datetime import datetime, timezone
+
 from base.audit import build_audit_info, build_audit_infos, invalidate_user_name_cache
 from base.base_schema import PaginatedResponse
 from base.base_service import BaseService
 from config.database import DbSession
-from core.user.model import User
+from core.user.model import User, UserStatus
 from core.user.schema import UserCreate, UserInfo, UserPageRequest, UserUpdate
 
 
 class UserService(BaseService[User, UserCreate, UserUpdate]):
     model = User
+
+    @classmethod
+    def login_block_reason(cls, user: User) -> str | None:
+        """
+        获取用户不可登录原因。
+
+        Args:
+            user: 用户 ORM 对象。
+
+        Returns:
+            str | None: 不可登录原因；允许登录时返回 None。
+        """
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        if not user.is_active():
+            return "账号已禁用"
+        if user.invalidate and user.invalidate <= now:
+            return "账号已失效"
+        return None
+
+    @classmethod
+    async def record_login_success(cls, db: DbSession, user: User) -> None:
+        """
+        记录登录成功状态。
+
+        Args:
+            db: 数据库会话。
+            user: 用户 ORM 对象。
+        """
+        user.status = UserStatus.ENABLED.value
+        user.lastest_login = datetime.now(timezone.utc).replace(tzinfo=None)
+        await db.commit()
+        await db.refresh(user)
+
+    @classmethod
+    async def record_login_locked(cls, db: DbSession, user: User) -> None:
+        """
+        将用户标记为登录失败锁定状态。
+
+        Args:
+            db: 数据库会话。
+            user: 用户 ORM 对象。
+        """
+        user.status = UserStatus.DISABLED.value
+        await db.commit()
+        await db.refresh(user)
 
     @classmethod
     async def create_user(cls, db: DbSession, data: UserCreate) -> UserInfo:

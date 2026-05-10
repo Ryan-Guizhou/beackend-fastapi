@@ -10,7 +10,7 @@
 @Desc: 用户请求与响应模型
 """
 
-from datetime import date, datetime
+from datetime import datetime
 
 from pydantic import Field, field_serializer
 
@@ -59,33 +59,6 @@ class UserCreate(ApiInSchema):
         ge=0,
         le=1,
         description="用户状态",
-    )
-    unlock_time: datetime | None = Field(
-        default=None,
-        alias="unlockTime",
-        description="解锁时间",
-    )
-    menu_style: str | None = Field(
-        default=None,
-        alias="menuStyle",
-        max_length=20,
-        description="菜单风格",
-    )
-    menu_role: str | None = Field(
-        default=None,
-        alias="menuRole",
-        max_length=128,
-        description="默认菜单角色",
-    )
-    start_date: date | None = Field(
-        default=None,
-        alias="startDate",
-        description="生效日期",
-    )
-    end_date: date | None = Field(
-        default=None,
-        alias="endDate",
-        description="失效日期",
     )
     mobile_phone: str | None = Field(
         default=None,
@@ -143,33 +116,6 @@ class UserUpdate(ApiInSchema):
         le=1,
         description="用户状态",
     )
-    unlock_time: datetime | None = Field(
-        default=None,
-        alias="unlockTime",
-        description="解锁时间",
-    )
-    menu_style: str | None = Field(
-        default=None,
-        alias="menuStyle",
-        max_length=20,
-        description="菜单风格",
-    )
-    menu_role: str | None = Field(
-        default=None,
-        alias="menuRole",
-        max_length=128,
-        description="默认菜单角色",
-    )
-    start_date: date | None = Field(
-        default=None,
-        alias="startDate",
-        description="生效日期",
-    )
-    end_date: date | None = Field(
-        default=None,
-        alias="endDate",
-        description="失效日期",
-    )
     mobile_phone: str | None = Field(
         default=None,
         alias="mobilePhone",
@@ -192,12 +138,6 @@ class UserUpdate(ApiInSchema):
         default=None,
         alias="passwordModifyTime",
         description="密码修改时间",
-    )
-    lock_reason: str | None = Field(
-        default=None,
-        alias="lockReason",
-        max_length=128,
-        description="锁定原因",
     )
 
 
@@ -275,39 +215,10 @@ class UserInfo(ApiOutSchema):
     status: int = Field(
         description="用户状态",
     )
-    unlock_time: datetime | None = Field(
-        default=None,
-        alias="unlockTime",
-        description="解锁时间",
-    )
-    menu_style: str | None = Field(
-        default=None,
-        alias="menuStyle",
-        description="菜单风格",
-    )
-    menu_role: str | None = Field(
-        default=None,
-        alias="menuRole",
-        description="默认菜单角色",
-    )
     lastest_login: datetime | None = Field(
         default=None,
         alias="lastestLogin",
         description="最后登录时间",
-    )
-    login_failed_count: int = Field(
-        alias="loginFailedCount",
-        description="登录失败次数",
-    )
-    start_date: date | None = Field(
-        default=None,
-        alias="startDate",
-        description="生效日期",
-    )
-    end_date: date | None = Field(
-        default=None,
-        alias="endDate",
-        description="失效日期",
     )
     mobile_phone: str | None = Field(
         default=None,
@@ -326,11 +237,6 @@ class UserInfo(ApiOutSchema):
         default=None,
         alias="passwordModifyTime",
         description="密码修改时间",
-    )
-    lock_reason: str | None = Field(
-        default=None,
-        alias="lockReason",
-        description="锁定原因",
     )
     create_id: str | None = Field(
         default=None,
@@ -361,10 +267,6 @@ class UserInfo(ApiOutSchema):
         description="更新时间",
     )
 
-    @field_serializer("create_time", "modify_time", "invalidate", "unlock_time", "lastest_login", "password_modify_time")
+    @field_serializer("create_time", "modify_time", "invalidate", "lastest_login", "password_modify_time")
     def serialize_datetime(self, value: datetime | None) -> str | None:
         return value.strftime("%Y-%m-%d %H:%M:%S") if value else None
-
-    @field_serializer("start_date", "end_date")
-    def serialize_date(self, value: date | None) -> str | None:
-        return value.isoformat() if value else None

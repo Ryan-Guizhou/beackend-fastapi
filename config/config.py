@@ -165,7 +165,9 @@ class JwtConfig(BaseModel):
     )
     algorithm: str = Field(default="HS256", description="JWT 算法")
     access_token_expire_minutes: int = Field(default=30, description="Access Token 过期时间")
-    refresh_token_expire_days: int = Field(default=7, description="Refresh Token 过期时间")
+    refresh_token_expire_minutes: int = Field(default=10080, description="Refresh Token 过期时间")
+    login_failure_lock_threshold: int = Field(default=5, description="登录失败锁定阈值")
+    login_failure_lock_minutes: int = Field(default=30, description="登录失败锁定时长")
 
 
 class LogConfig(BaseModel):

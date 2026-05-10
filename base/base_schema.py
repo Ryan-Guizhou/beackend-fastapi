@@ -43,6 +43,7 @@ class ErrorCode(int, Enum):
     SUCCESS = 200
     FAILURE = 500
     AUTH_FAILURE = 401
+    AUTH_EXPIRED = 402
     COMMON_FAILURE = 400
     FORBIDDEN = 403
     NOT_FOUND = 404

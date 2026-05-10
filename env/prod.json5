@@ -46,7 +46,9 @@
     secret_key: "_Ajb6-A-9XLdFs5SJNa5QCsDMP4rdsRTCUHrO37IA4c",
     algorithm: "HS256",
     access_token_expire_minutes: 30,
-    refresh_token_expire_days: 7,
+    refresh_token_expire_minutes: 10080,
+    login_failure_lock_threshold: 5,
+    login_failure_lock_minutes: 30,
   },
 
   log: {

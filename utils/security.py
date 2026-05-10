@@ -133,7 +133,7 @@ def create_refresh_token(data: dict, expires_delta: timedelta | None = None) -> 
         expire = datetime.now(timezone.utc) + expires_delta
     else:
         expire = datetime.now(timezone.utc) + timedelta(
-            days=settings.jwt.refresh_token_expire_days
+            minutes=settings.jwt.refresh_token_expire_minutes
         )
 
     to_encode.update({

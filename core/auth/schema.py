@@ -10,10 +10,12 @@
 @Desc: 认证请求和响应模型
 """
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from base.base_schema import ApiInSchema, ApiOutSchema
 
 
-class LoginInfo(BaseModel):
+class LoginInfo(ApiInSchema):
     user_code: str = Field(
         ...,
         alias="userCode",
@@ -29,19 +31,9 @@ class LoginInfo(BaseModel):
         max_length=6,
         description="验证码",
     )
-    session_id: str = Field(
-        default="shared",
-        alias="sessionId",
-        description="传输密钥会话ID",
-    )
 
 
-class CryptoInitInfo(BaseModel):
-    session_id: str = Field(
-        default="shared",
-        alias="sessionId",
-        description="传输密钥会话ID",
-    )
+class CryptoInitInfo(ApiOutSchema):
     rsa_public_key: str = Field(
         ...,
         alias="rsaPublicKey",
@@ -64,11 +56,39 @@ class CryptoInitInfo(BaseModel):
     )
     encoding: str = Field(
         default="base64url",
-        description="密文编码",
+        description="密文编码方式",
     )
 
 
-class LogoutInfo(BaseModel):
+class TokenInfo(ApiOutSchema):
+    access_token: str = Field(
+        ...,
+        alias="accessToken",
+        description="访问令牌",
+    )
+    refresh_token: str | None = Field(
+        default=None,
+        alias="refreshToken",
+        description="刷新令牌",
+    )
+    token_type: str = Field(
+        default="bearer",
+        alias="tokenType",
+        description="令牌类型",
+    )
+    expires_in: int = Field(
+        ...,
+        alias="expiresIn",
+        description="access token 过期时间，单位秒",
+    )
+    refresh_expires_in: int | None = Field(
+        default=None,
+        alias="refreshExpiresIn",
+        description="refresh token 过期时间，单位秒",
+    )
+
+
+class LogoutInfo(ApiOutSchema):
     revoked: bool = Field(
         default=True,
         description="是否已处理退出登录",

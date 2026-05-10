@@ -20,7 +20,9 @@ from config.config import settings
 from config.log.config import setup_logging
 from core.router import router as core_router
 from demo.router import router as demo_router
+from middleware.auth_middleware import AuthMiddleware
 from middleware.log_middleware import RequestLogMiddleware
+from middleware.request_context_middleware import RequestContextMiddleware
 from scheduler.router import router as scheduler_router
 from apscheduler import AsyncScheduler
 from scheduler.service import scheduler_service as service
@@ -128,6 +130,8 @@ app = FastAPI(
     },
 )
 
+app.add_middleware(AuthMiddleware)
+app.add_middleware(RequestContextMiddleware)
 app.add_middleware(RequestLogMiddleware)
 app.include_router(core_router, prefix="/api/core")
 app.include_router(demo_router, prefix="/demo")

@@ -10,21 +10,16 @@
 @Desc: 认证接口定义
 """
 
-import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Header, Request
 
-from base.base_schema import ErrorCode, Response
+from base.base_schema import Response
 from config.database import DbSession
-from core.auth.schema import LoginInfo, LogoutInfo
-from core.auth.service import AuthCryptoService, AuthTokenService
-from core.user.service import UserService
-from utils.security import create_access_token, create_refresh_token, verify_password
+from core.auth.schema import LoginInfo
+from core.auth.service import AuthCryptoService, AuthService, AuthTokenService
 
 router = APIRouter(prefix="/auth", tags=["认证管理"])
-
-logger = logging.getLogger(__name__)
 
 
 def get_redis_service(request: Request):
@@ -35,10 +30,10 @@ def get_redis_service(request: Request):
         request: FastAPI 请求对象。
 
     Returns:
-        RedisService: Redis 服务。
+        RedisService: Redis 服务实例。
 
     Raises:
-        RuntimeError: RedisService 未初始化时抛出。
+        RuntimeError: RedisService 未初始化时抛出异常。
     """
     redis_service = getattr(request.app.state, "redis_service", None)
     if redis_service is None:
@@ -46,20 +41,47 @@ def get_redis_service(request: Request):
     return redis_service
 
 
-@router.get("/init", response_model=Response, summary="初始化传输加密密钥")
-async def init_crypto(request: Request) -> Response:
+def get_mongo_manager(request: Request):
     """
-    初始化前后端传输加密密钥。
-
-    说明：
-        优先从 Redis 获取 RSA 密钥对；Redis 没有时读取指定目录下的 PEM 文件；
-        PEM 文件不存在时生成标准 RSA 密钥对文件，并写入 Redis 后返回公钥。
+    获取应用生命周期中初始化的 MongoManager。
 
     Args:
         request: FastAPI 请求对象。
 
     Returns:
-        Response: RSA 公钥和会话 ID。
+        MongoManager | None: Mongo 管理器。
+    """
+    return getattr(request.app.state, "mongo_manager", None)
+
+
+def get_client_ip(request: Request) -> str | None:
+    """
+    获取客户端 IP。
+
+    Args:
+        request: FastAPI 请求对象。
+
+    Returns:
+        str | None: 客户端 IP。
+    """
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip()
+    if request.client:
+        return request.client.host
+    return None
+
+
+@router.get("/init", response_model=Response, summary="初始化传输加密密钥")
+async def init_crypto(request: Request) -> Response:
+    """
+    初始化前后端传输加密密钥。
+
+    Args:
+        request: FastAPI 请求对象。
+
+    Returns:
+        Response: 初始化密钥信息。
     """
     crypto_info = await AuthCryptoService.init_crypto(get_redis_service(request))
     return Response.success(data=crypto_info)
@@ -67,60 +89,43 @@ async def init_crypto(request: Request) -> Response:
 
 @router.post("/login", response_model=Response, summary="用户登录")
 async def login(
-        request: Request,
-        db: DbSession,
-        login_info: LoginInfo,
+    request: Request,
+    db: DbSession,
+    login_info: LoginInfo,
 ) -> Response:
     """
     用户登录。
 
-    说明：
-        前端使用 `/auth/init` 返回的 RSA 公钥加密密码，登录时传入密文和 sessionId。
-        验证码字段暂时保留，后续接入验证码服务后再校验。
-
     Args:
         request: FastAPI 请求对象。
         db: 数据库会话。
-        login_info: 登录请求数据。
+        login_info: 登录请求参数。
 
     Returns:
-        Response: 登录结果。
+        Response: 登录结果和令牌信息。
     """
-    try:
-        plain_password = await AuthCryptoService.decrypt_rsa_text(
-            get_redis_service(request),
-            login_info.session_id,
-            login_info.password,
-        )
-    except Exception:
-        logger.exception("login password decrypt failed")
-        return Response.failure(code=ErrorCode.COMMON_FAILURE, msg="密码解密失败")
-
-    user = await UserService.get_by_field(db, "user_code", login_info.user_code)
-    if not user or not user.can_login():
-        return Response.failure(code=ErrorCode.AUTH_FAILURE, msg="账号不存在或不可登录")
-
-    if not verify_password(plain_password, user.password):
-        return Response.failure(code=ErrorCode.AUTH_FAILURE, msg="账号或密码错误")
-
-    token_payload = {
-        "sub": user.id,
-        "userCode": user.user_code,
-        "userName": user.user_name,
-    }
-    return Response.success(
-        data={
-            "accessToken": create_access_token(token_payload),
-            "refreshToken": create_refresh_token(token_payload),
-            "tokenType": "bearer",
-        }
+    result = await AuthService.login(
+        db,
+        get_redis_service(request),
+        get_mongo_manager(request),
+        login_info,
+        AuthService.build_request_context(
+            trace_id=request.headers.get("x-request-id") or request.headers.get("x-trace-id"),
+            client_ip=get_client_ip(request),
+            user_agent=request.headers.get("user-agent"),
+            request_path=request.url.path,
+            request_method=request.method,
+        ),
     )
+    if result.success:
+        return Response.success(data=result.data, msg=result.msg, code=result.code)
+    return Response.failure(code=result.code, msg=result.msg)
 
 
 @router.post("/logout", response_model=Response, summary="退出登录")
 async def logout(
-        request: Request,
-        authorization: Annotated[str | None, Header()] = None,
+    request: Request,
+    authorization: Annotated[str | None, Header()] = None,
 ) -> Response:
     """
     退出登录。
@@ -130,7 +135,39 @@ async def logout(
         authorization: Authorization 请求头。
 
     Returns:
-        Response: 退出登录结果。
+        Response: 退出处理结果。
     """
-    revoked = await AuthTokenService.logout(get_redis_service(request), authorization)
-    return Response.success(data=LogoutInfo(revoked=revoked))
+    logout_info = await AuthTokenService.logout(get_redis_service(request), authorization)
+    return Response.success(data=logout_info)
+
+
+@router.api_route(
+    "/refresh_token",
+    methods=["GET", "POST"],
+    response_model=Response,
+    summary="刷新访问令牌",
+)
+async def refresh_token(
+    request: Request,
+    db: DbSession,
+    authorization: Annotated[str | None, Header()] = None,
+) -> Response:
+    """
+    使用 refresh token 刷新 access token。
+
+    Args:
+        request: FastAPI 请求对象。
+        db: 数据库会话。
+        authorization: Authorization 请求头。
+
+    Returns:
+        Response: 刷新结果。
+    """
+    result = await AuthService.refresh_access_token(
+        db,
+        get_redis_service(request),
+        authorization,
+    )
+    if result.success:
+        return Response.success(data=result.data, msg=result.msg, code=result.code)
+    return Response.failure(code=result.code, msg=result.msg)
